@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { EmailCampaign, RadioStation, RadioType, RadioProfile, Music, Artist, CityHall, Business } from '../types';
 import { BRAZILIAN_STATES, BUSINESS_CATEGORIES, RADIO_PROFILES, DDD_REGIONS } from '../constants';
-import { XMarkIcon } from './Icons';
+import { XMarkIcon, SparklesIcon } from './Icons';
 import { getDddInfo } from '../utils';
+import GeminiEmailModal from './GeminiEmailModal';
 
 type RecipientCategory = 'Rádios' | 'Prefeituras' | 'Empresários';
 
@@ -26,6 +27,7 @@ const EmailCampaignSection = ({ campaigns, onSave, radioStations, cityHalls, bus
     const [selectedMusicId, setSelectedMusicId] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
     const [imageToAttach, setImageToAttach] = useState<string | null>(null);
+    const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
     
     const [recipientCategory, setRecipientCategory] = useState<RecipientCategory>('Rádios');
 
@@ -270,7 +272,16 @@ const EmailCampaignSection = ({ campaigns, onSave, radioStations, cityHalls, bus
             <div className="space-y-8">
                 {/* Email Composer */}
                 <div className="bg-white/30 dark:bg-slate-800/40 backdrop-blur-xl p-6 rounded-2xl shadow-xl border border-white/20 dark:border-slate-700/50">
-                    <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-4">Compor E-mail</h2>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">Compor E-mail</h2>
+                        <button 
+                            onClick={() => setIsGeminiModalOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                            <SparklesIcon className="w-4 h-4" />
+                            Gerar com IA
+                        </button>
+                    </div>
                     <div className="space-y-4">
                         <input type="text" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Assunto do E-mail" className={formFieldClass} />
                         <textarea value={body} onChange={e => setBody(e.target.value)} placeholder="Corpo do e-mail..." rows={10} className={formFieldClass}></textarea>
@@ -338,6 +349,18 @@ const EmailCampaignSection = ({ campaigns, onSave, radioStations, cityHalls, bus
                     )}
                 </div>
             </div>
+            <GeminiEmailModal
+                isOpen={isGeminiModalOpen}
+                onClose={() => setIsGeminiModalOpen(false)}
+                onApply={(subject, body) => {
+                    setSubject(subject);
+                    setBody(body);
+                }}
+                initialPromptData={{
+                    artistName: selectedArtistName || '',
+                    songTitle: selectedSong?.title || ''
+                }}
+            />
         </div>
     );
 };
