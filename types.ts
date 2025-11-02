@@ -121,6 +121,7 @@ export interface Artist {
     createdAt: string;
     isArchived?: boolean;
     businessId?: string;
+    bio?: string;
 }
 
 export interface Music {

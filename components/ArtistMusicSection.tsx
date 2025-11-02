@@ -5,6 +5,7 @@ import { PlusIcon, PencilIcon, TrashIcon, UserIcon, CloudArrowDownIcon, Briefcas
 import { MUSIC_GENRES } from '../constants';
 import { normalizeString, getReleaseStatus, getExpirationStatus } from '../utils';
 import GeminiArtistModal from './GeminiArtistModal';
+import GeminiBioModal from './GeminiBioModal';
 
 const isValidUrl = (urlString?: string): boolean => {
     if (!urlString || urlString.trim() === '') return true; // Optional field, so an empty string is valid.
@@ -34,7 +35,7 @@ const ArtistForm = ({
     businesses: Business[];
 }) => {
     const [artist, setArtist] = useState<Omit<Artist, 'id' | 'createdAt'>>(
-        initialData ? { name: initialData.name, genre: initialData.genre, businessId: initialData.businessId || '' } : { name: '', genre: MusicGenre.SERTANEJO, businessId: '' }
+        initialData ? { name: initialData.name, genre: initialData.genre, businessId: initialData.businessId || '', bio: initialData.bio || '' } : { name: '', genre: MusicGenre.SERTANEJO, businessId: '', bio: '' }
     );
     const [artistMusic, setArtistMusic] = useState<Music[]>(initialData ? allMusic.filter(m => m.artistId === initialData.id) : []);
     const [newSongData, setNewSongData] = useState({ title: '', composers: '', wavUrl: '', releaseDate: '' });
@@ -42,6 +43,7 @@ const ArtistForm = ({
     const [musicToDeleteIds, setMusicToDeleteIds] = useState<string[]>([]);
     const [weekendError, setWeekendError] = useState<{ show: boolean, day: string }>({ show: false, day: '' });
     const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
+    const [isBioModalOpen, setIsBioModalOpen] = useState(false);
 
     const formFieldClass = "block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm shadow-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500";
     
@@ -139,6 +141,26 @@ const ArtistForm = ({
                             {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
                     </div>
+                    <div className="md:col-span-2">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Biografia do Artista</label>
+                            <button 
+                                type="button"
+                                onClick={() => setIsBioModalOpen(true)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                            >
+                                <SparklesIcon className="w-3 h-3" />
+                                Gerar com IA
+                            </button>
+                        </div>
+                        <textarea 
+                            value={artist.bio || ''} 
+                            onChange={e => setArtist(p => ({ ...p, bio: e.target.value }))} 
+                            className={formFieldClass} 
+                            rows={4}
+                            placeholder="Escreva uma breve biografia do artista..."
+                        />
+                    </div>
                 </div>
                 {initialData && <p className="text-xs text-slate-500 dark:text-slate-400">Cadastrado em: {new Date(initialData.createdAt).toLocaleString('pt-BR')}</p>}
 
@@ -225,6 +247,12 @@ const ArtistForm = ({
                 isOpen={isGeminiModalOpen}
                 onClose={() => setIsGeminiModalOpen(false)}
                 onAddSong={addSongToList}
+                context={{ artistName: artist.name, genre: artist.genre }}
+            />
+             <GeminiBioModal
+                isOpen={isBioModalOpen}
+                onClose={() => setIsBioModalOpen(false)}
+                onApply={(bio) => setArtist(p => ({ ...p, bio }))}
                 context={{ artistName: artist.name, genre: artist.genre }}
             />
         </>
@@ -327,70 +355,78 @@ const ArtistMusicSection = ({ artists, businesses, music, musicalBlitzes, onSave
                                 </div>
                                 {isExpanded && (
                                     <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-slate-100 dark:bg-slate-800/50">
-                                        {artistSongs.length > 0 && (
-                                            <div className="mb-4">
-                                                <h4 className="text-md font-semibold mb-2 text-slate-700 dark:text-slate-300">Músicas</h4>
-                                                <ul className="space-y-2">
-                                                    {artistSongs.map(song => {
-                                                        const releaseStatus = getReleaseStatus(song.releaseDate);
-                                                        const expirationStatus = getExpirationStatus(song.releaseDate);
-                                                        return (
-                                                            <li key={song.id} className="flex flex-col sm:flex-row justify-between sm:items-center text-sm p-2 bg-white dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                                                                <div className="flex-grow flex items-center gap-2">
-                                                                    {song.wavUrl && <a href={song.wavUrl} target="_blank" rel="noopener noreferrer" title="Link em WAV"><CloudArrowDownIcon className="w-5 h-5 text-blue-500"/></a>}
-                                                                    <div>
-                                                                        <p className="font-medium text-slate-800 dark:text-slate-200">{song.title}</p>
-                                                                        {song.composers && <p className="text-xs text-slate-500 dark:text-slate-400">Compositor(es): {song.composers}</p>}
+                                        <div className="space-y-4">
+                                            {artist.bio && (
+                                                <div>
+                                                    <h4 className="text-md font-semibold mb-2 text-slate-700 dark:text-slate-300">Biografia</h4>
+                                                    <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{artist.bio}</p>
+                                                </div>
+                                            )}
+                                            {artistSongs.length > 0 && (
+                                                <div>
+                                                    <h4 className="text-md font-semibold mb-2 text-slate-700 dark:text-slate-300">Músicas</h4>
+                                                    <ul className="space-y-2">
+                                                        {artistSongs.map(song => {
+                                                            const releaseStatus = getReleaseStatus(song.releaseDate);
+                                                            const expirationStatus = getExpirationStatus(song.releaseDate);
+                                                            return (
+                                                                <li key={song.id} className="flex flex-col sm:flex-row justify-between sm:items-center text-sm p-2 bg-white dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                                    <div className="flex-grow flex items-center gap-2">
+                                                                        {song.wavUrl && <a href={song.wavUrl} target="_blank" rel="noopener noreferrer" title="Link em WAV"><CloudArrowDownIcon className="w-5 h-5 text-blue-500"/></a>}
+                                                                        <div>
+                                                                            <p className="font-medium text-slate-800 dark:text-slate-200">{song.title}</p>
+                                                                            {song.composers && <p className="text-xs text-slate-500 dark:text-slate-400">Compositor(es): {song.composers}</p>}
+                                                                        </div>
                                                                     </div>
-                                                                </div>
-                                                                <div className="flex items-center flex-wrap justify-start sm:justify-end gap-2 mt-2 sm:mt-0">
-                                                                    {releaseStatus && (
-                                                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${releaseStatus.className}`}>
-                                                                            {releaseStatus.text}
-                                                                        </span>
-                                                                    )}
-                                                                    {expirationStatus && (
-                                                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${expirationStatus.className}`}>
-                                                                            ({expirationStatus.text})
-                                                                        </span>
-                                                                    )}
-                                                                    <button
-                                                                        onClick={(e) => { e.stopPropagation(); onToggleMusicDashboardVisibility(song.id); }}
-                                                                        className="p-1 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full"
-                                                                        title={song.hideFromDashboard ? "Mostrar no Dashboard" : "Ocultar do Dashboard"}
-                                                                    >
-                                                                        {song.hideFromDashboard ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                                                                    </button>
-                                                                </div>
-                                                            </li>
-                                                        );
-                                                    })}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {artistBlitzHistory && artistBlitzHistory.length > 0 && (
-                                            <div>
-                                                <h4 className="text-md font-semibold mb-2 text-slate-700 dark:text-slate-300">Histórico de Blitz</h4>
-                                                <ul className="space-y-2 max-h-40 overflow-y-auto pr-2">
-                                                    {artistBlitzHistory.map(blitz => {
-                                                        const song = music.find(m => m.id === blitz.musicId);
-                                                        const blitzDate = new Date(blitz.eventDate + 'T00:00:00').toLocaleDateString('pt-BR');
-                                                        return (
-                                                            <li key={blitz.id} className="text-sm p-2 bg-white dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
-                                                                <p className="font-medium text-slate-800 dark:text-slate-200">{song?.title || 'Música desconhecida'}</p>
-                                                                <p className="text-xs text-slate-500 dark:text-slate-400">
-                                                                    Data: {blitzDate}
-                                                                    {blitz.notes && ` - ${blitz.notes}`}
-                                                                </p>
-                                                            </li>
-                                                        )
-                                                    })}
-                                                </ul>
-                                            </div>
-                                        )}
-                                        {artistSongs.length === 0 && artistBlitzHistory.length === 0 && (
-                                            <p className="text-sm text-center text-slate-500 dark:text-slate-400 py-4">Nenhuma música ou blitz cadastrada para este artista.</p>
-                                        )}
+                                                                    <div className="flex items-center flex-wrap justify-start sm:justify-end gap-2 mt-2 sm:mt-0">
+                                                                        {releaseStatus && (
+                                                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${releaseStatus.className}`}>
+                                                                                {releaseStatus.text}
+                                                                            </span>
+                                                                        )}
+                                                                        {expirationStatus && (
+                                                                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${expirationStatus.className}`}>
+                                                                                ({expirationStatus.text})
+                                                                            </span>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={(e) => { e.stopPropagation(); onToggleMusicDashboardVisibility(song.id); }}
+                                                                            className="p-1 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-full"
+                                                                            title={song.hideFromDashboard ? "Mostrar no Dashboard" : "Ocultar do Dashboard"}
+                                                                        >
+                                                                            {song.hideFromDashboard ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                                                                        </button>
+                                                                    </div>
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {artistBlitzHistory && artistBlitzHistory.length > 0 && (
+                                                <div>
+                                                    <h4 className="text-md font-semibold mb-2 text-slate-700 dark:text-slate-300">Histórico de Blitz</h4>
+                                                    <ul className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                                                        {artistBlitzHistory.map(blitz => {
+                                                            const song = music.find(m => m.id === blitz.musicId);
+                                                            const blitzDate = new Date(blitz.eventDate + 'T00:00:00').toLocaleDateString('pt-BR');
+                                                            return (
+                                                                <li key={blitz.id} className="text-sm p-2 bg-white dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-700">
+                                                                    <p className="font-medium text-slate-800 dark:text-slate-200">{song?.title || 'Música desconhecida'}</p>
+                                                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                                                        Data: {blitzDate}
+                                                                        {blitz.notes && ` - ${blitz.notes}`}
+                                                                    </p>
+                                                                </li>
+                                                            )
+                                                        })}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                            {artistSongs.length === 0 && artistBlitzHistory.length === 0 && !artist.bio && (
+                                                <p className="text-sm text-center text-slate-500 dark:text-slate-400 py-4">Nenhuma música, blitz ou biografia cadastrada para este artista.</p>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
