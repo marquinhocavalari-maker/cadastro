@@ -11,10 +11,9 @@ interface SidebarProps {
     isSidebarOpen: boolean;
     setIsSidebarOpen: (isOpen: boolean) => void;
     onOpenSyncModal: () => void;
-    onLogout: () => void;
 }
 
-const Sidebar = ({ activeView, setActiveView, theme, toggleTheme, isSidebarOpen, setIsSidebarOpen, onOpenSyncModal, onLogout }: SidebarProps) => {
+const Sidebar = ({ activeView, setActiveView, theme, toggleTheme, isSidebarOpen, setIsSidebarOpen, onOpenSyncModal }: SidebarProps) => {
     const navItems: any[] = [
         { id: 'dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
         { type: 'divider' },
@@ -34,8 +33,6 @@ const Sidebar = ({ activeView, setActiveView, theme, toggleTheme, isSidebarOpen,
         { id: 'configuracoes', label: 'Configurações', icon: <Cog6ToothIcon /> },
         { id: 'sync', label: 'Backup', icon: <CloudArrowDownIcon />, action: onOpenSyncModal, customClass: 'uppercase text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-500' },
         { id: 'archive', label: 'Arquivo', icon: <ArchiveBoxIcon /> },
-        { type: 'divider' },
-        { id: 'logout', label: 'Sair', icon: <ArrowRightOnRectangleIcon />, action: onLogout, customClass: 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-500' },
     ];
     
     const sidebarContent = (

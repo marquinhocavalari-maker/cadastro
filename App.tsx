@@ -19,7 +19,6 @@ import ArchiveSection from './components/ArchiveSection';
 import Modal from './components/Modal';
 import ConfirmationModal from './components/ConfirmationModal';
 import SettingsSection from './components/SettingsSection';
-import LoginScreen from './components/LoginScreen';
 import { RadioStation, CityHall, Business, RadioType, Artist, Music, Promotion, MusicGenre, PromotionType, RadioSubmission, EmailCampaign, RadioProfile, ActiveView, AppEvent as Event, MusicalBlitz, SheetsConfig } from './types';
 import CrowleyMarketsSection from './components/CrowleyMarketsSection';
 import { useStickyState } from './hooks/useStickyState';
@@ -29,9 +28,6 @@ import SyncModal from './components/SyncModal';
 import MusicalBlitzSection from './components/MusicalBlitzSection';
 
 const App = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        return sessionStorage.getItem('controle-plus-auth') === 'true';
-    });
      const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           return 'dark';
@@ -112,21 +108,6 @@ const App = () => {
         }
     };
     
-    const handleLogin = (user: string, pass: string): boolean => {
-        // Simple authentication. In a real app, this would be an API call.
-        if (user === 'admin' && pass === 'admin') {
-            sessionStorage.setItem('controle-plus-auth', 'true');
-            setIsAuthenticated(true);
-            return true;
-        }
-        return false;
-    };
-
-    const handleLogout = () => {
-        sessionStorage.removeItem('controle-plus-auth');
-        setIsAuthenticated(false);
-    };
-
     // Derived memoized state for non-archived items
     const nonArchivedRadios = useMemo(() => radios.filter(r => !r.isArchived), [radios]);
     const nonArchivedCityHalls = useMemo(() => cityHalls.filter(c => !c.isArchived), [cityHalls]);
@@ -492,10 +473,6 @@ const App = () => {
         return <RadioSubmissionForm crowleyMarketsList={crowleyMarkets} />;
     }
 
-    if (!isAuthenticated) {
-        return <LoginScreen onLogin={handleLogin} />;
-    }
-
     const renderActiveView = () => {
         switch (activeView) {
             case 'dashboard':
@@ -668,7 +645,6 @@ const App = () => {
                     isSidebarOpen={isSidebarOpen}
                     setIsSidebarOpen={setIsSidebarOpen}
                     onOpenSyncModal={() => setIsSyncModalOpen(true)}
-                    onLogout={handleLogout}
                 />
 
                 <div className="md:pl-64 h-full flex flex-col">
