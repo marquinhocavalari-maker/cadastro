@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Promotion, Artist, RadioStation, PromotionType, Business, Music } from '../types';
 import Modal from './Modal';
-import { PlusIcon, PencilIcon, TrashIcon, MegaphoneIcon, MusicalNoteIcon, DocumentDuplicateIcon, XMarkIcon } from './Icons';
+import { PlusIcon, PencilIcon, TrashIcon, MegaphoneIcon, MusicalNoteIcon, DocumentDuplicateIcon, XMarkIcon, SparklesIcon } from './Icons';
 import { PROMOTION_TYPES } from '../constants';
 import { normalizeString, formatCurrency } from '../utils';
+import GeminiPromotionModal from './GeminiPromotionModal';
 
 const calculateDaysLeft = (endDateString: string) => {
     // FIX: Using Date constructor with a full ISO-like string ensures it's parsed in the local timezone,
@@ -64,6 +65,7 @@ const PromotionForm = ({ onSave, onClose, mode, initialData, artists, radioStati
     const [selectedRadioIds, setSelectedRadioIds] = useState<string[]>([]);
     const [radioSearch, setRadioSearch] = useState('');
     const [isRadioDropdownOpen, setIsRadioDropdownOpen] = useState(false);
+    const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
 
     const [promotion, setPromotion] = useState(() => {
         if (initialData) {
@@ -163,87 +165,106 @@ const PromotionForm = ({ onSave, onClose, mode, initialData, artists, radioStati
     const isMultiRadio = mode === 'add' || mode === 'clone';
 
     const artistName = artists.find(a => a.id === promotion.artistId)?.name || '';
-    const musicTitle = music.find(m => m.id === promotion.musicId)?.title || '';
+    // FIX: Renamed variable to `songTitle` to match the prop expected by GeminiPromotionModal.
+    const songTitle = music.find(m => m.id === promotion.musicId)?.title || '';
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <fieldset className="space-y-4">
-                <legend className="text-lg font-medium text-slate-900 dark:text-white">Detalhes da Promoção</legend>
-                <input name="name" value={promotion.name} onChange={handleChange} placeholder="Nome da Promoção" className={formFieldClass} required />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <select name="artistId" value={promotion.artistId} onChange={handleChange} className={formFieldClass} required>
-                        <option value="" disabled>Selecione um artista</option>
-                        {artists.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
-                    <select name="musicId" value={promotion.musicId} onChange={handleChange} className={formFieldClass} disabled={artistSongs.length === 0}>
-                        <option value="">{artistSongs.length > 0 ? 'Selecione uma música (opcional)' : 'Artista sem músicas'}</option>
-                        {artistSongs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                    </select>
-                </div>
-                <textarea name="details" value={promotion.details} onChange={handleChange} rows={3} placeholder="Descreva a promoção..." className={formFieldClass}></textarea>
-            </fieldset>
+        <>
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <fieldset className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <legend className="text-lg font-medium text-slate-900 dark:text-white">Detalhes da Promoção</legend>
+                         <button 
+                            type="button"
+                            onClick={() => setIsGeminiModalOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                            <SparklesIcon className="w-4 h-4" />
+                            Gerar com IA
+                        </button>
+                    </div>
+                    <input name="name" value={promotion.name} onChange={handleChange} placeholder="Nome da Promoção" className={formFieldClass} required />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <select name="artistId" value={promotion.artistId} onChange={handleChange} className={formFieldClass} required>
+                            <option value="" disabled>Selecione um artista</option>
+                            {artists.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                        <select name="musicId" value={promotion.musicId} onChange={handleChange} className={formFieldClass} disabled={artistSongs.length === 0}>
+                            <option value="">{artistSongs.length > 0 ? 'Selecione uma música (opcional)' : 'Artista sem músicas'}</option>
+                            {artistSongs.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                        </select>
+                    </div>
+                    <textarea name="details" value={promotion.details} onChange={handleChange} rows={3} placeholder="Descreva a promoção..." className={formFieldClass}></textarea>
+                </fieldset>
 
-            <fieldset className="space-y-4">
-                 <legend className="text-lg font-medium text-slate-900 dark:text-white">Rádios Participantes</legend>
-                { !isMultiRadio && <p className="text-xs text-slate-500 dark:text-slate-400">Modo de edição: apenas uma rádio por vez.</p>}
-                <div className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg">
-                     {selectedRadioIds.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                           {selectedRadioIds.map(id => {
-                               const radio = radioStationMap.get(id);
-                               return (
-                                <span key={id} className="flex items-center bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-sm font-medium px-2.5 py-1 rounded-full">
-                                    {radio?.name || 'Rádio não encontrada'}
-                                    <button type="button" onClick={() => handleRemoveRadio(id)} className="ml-1.5 -mr-1 p-0.5 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-700">
-                                        <XMarkIcon className="w-3 h-3" />
-                                    </button>
-                                </span>
-                               );
-                           })}
+                <fieldset className="space-y-4">
+                    <legend className="text-lg font-medium text-slate-900 dark:text-white">Rádios Participantes</legend>
+                    { !isMultiRadio && <p className="text-xs text-slate-500 dark:text-slate-400">Modo de edição: apenas uma rádio por vez.</p>}
+                    <div className="p-2 border border-slate-200 dark:border-slate-800 rounded-lg">
+                        {selectedRadioIds.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-2">
+                            {selectedRadioIds.map(id => {
+                                const radio = radioStationMap.get(id);
+                                return (
+                                    <span key={id} className="flex items-center bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 text-sm font-medium px-2.5 py-1 rounded-full">
+                                        {radio?.name || 'Rádio não encontrada'}
+                                        <button type="button" onClick={() => handleRemoveRadio(id)} className="ml-1.5 -mr-1 p-0.5 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-700">
+                                            <XMarkIcon className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                );
+                            })}
+                            </div>
+                        )}
+                        <div className="relative">
+                            <input type="text" value={radioSearch} onChange={e => setRadioSearch(e.target.value)} onFocus={() => setIsRadioDropdownOpen(true)} onBlur={() => setTimeout(() => setIsRadioDropdownOpen(false), 200)} placeholder="Pesquisar rádio para adicionar..." className={formFieldClass} autoComplete="off" />
+                            {isRadioDropdownOpen && (
+                                <ul className="absolute z-10 w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
+                                    {filteredRadios.length > 0 ? filteredRadios.slice(0, 100).map(radio => (
+                                        <li key={radio.id} onMouseDown={() => handleAddRadio(radio.id)} className="px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900 cursor-pointer">
+                                            {radio.name} <span className="text-xs text-slate-500 dark:text-slate-400">({radio.city})</span>
+                                        </li>
+                                    )) : <li className="px-3 py-2 text-sm text-slate-500">Nenhuma rádio encontrada</li>}
+                                </ul>
+                            )}
                         </div>
-                     )}
-                     <div className="relative">
-                        <input type="text" value={radioSearch} onChange={e => setRadioSearch(e.target.value)} onFocus={() => setIsRadioDropdownOpen(true)} onBlur={() => setTimeout(() => setIsRadioDropdownOpen(false), 200)} placeholder="Pesquisar rádio para adicionar..." className={formFieldClass} autoComplete="off" />
-                        {isRadioDropdownOpen && (
-                            <ul className="absolute z-10 w-full bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg mt-1 max-h-48 overflow-y-auto shadow-lg">
-                                {filteredRadios.length > 0 ? filteredRadios.slice(0, 100).map(radio => (
-                                    <li key={radio.id} onMouseDown={() => handleAddRadio(radio.id)} className="px-3 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900 cursor-pointer">
-                                        {radio.name} <span className="text-xs text-slate-500 dark:text-slate-400">({radio.city})</span>
-                                    </li>
-                                )) : <li className="px-3 py-2 text-sm text-slate-500">Nenhuma rádio encontrada</li>}
-                            </ul>
+                    </div>
+                </fieldset>
+
+                <fieldset className="space-y-4">
+                    <legend className="text-lg font-medium text-slate-900 dark:text-white">Valores e Prazos</legend>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <select name="type" value={promotion.type} onChange={handleChange} className={formFieldClass}>
+                            {PROMOTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {promotion.type === PromotionType.VERBA && (
+                            <input name="value" value={promotion.value as string} onChange={handleValueChange} placeholder="Valor R$" className={formFieldClass} />
                         )}
                     </div>
-                </div>
-            </fieldset>
-
-            <fieldset className="space-y-4">
-                <legend className="text-lg font-medium text-slate-900 dark:text-white">Valores e Prazos</legend>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <select name="type" value={promotion.type} onChange={handleChange} className={formFieldClass}>
-                        {PROMOTION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                    {promotion.type === PromotionType.VERBA && (
-                        <input name="value" value={promotion.value as string} onChange={handleValueChange} placeholder="Valor R$" className={formFieldClass} />
-                    )}
-                </div>
-                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Data de Início</label>
-                        <input type="date" name="startDate" value={promotion.startDate} onChange={handleChange} className={formFieldClass} required />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Data de Início</label>
+                            <input type="date" name="startDate" value={promotion.startDate} onChange={handleChange} className={formFieldClass} required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Data de Fim</label>
+                            <input type="date" name="endDate" value={promotion.endDate} onChange={handleChange} className={formFieldClass} required />
+                        </div>
                     </div>
-                     <div>
-                        <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">Data de Fim</label>
-                        <input type="date" name="endDate" value={promotion.endDate} onChange={handleChange} className={formFieldClass} required />
-                    </div>
+                </fieldset>
+                
+                <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800 mt-6">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300 dark:text-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancelar</button>
+                    <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Salvar</button>
                 </div>
-            </fieldset>
-            
-            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800 mt-6">
-                <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300 dark:text-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancelar</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Salvar</button>
-            </div>
-        </form>
+            </form>
+            <GeminiPromotionModal
+                isOpen={isGeminiModalOpen}
+                onClose={() => setIsGeminiModalOpen(false)}
+                onApply={(name, details) => setPromotion(p => ({ ...p, name, details }))}
+                context={{ artistName, songTitle }}
+            />
+        </>
     );
 };
 

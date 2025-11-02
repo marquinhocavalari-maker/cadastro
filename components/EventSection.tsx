@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { AppEvent, Artist, Business } from '../types';
 import Modal from './Modal';
-import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon, UserIcon, BriefcaseIcon, XMarkIcon, EyeIcon } from './Icons';
+import { PlusIcon, PencilIcon, TrashIcon, CalendarDaysIcon, UserIcon, BriefcaseIcon, XMarkIcon, EyeIcon, SparklesIcon } from './Icons';
 import { BRAZILIAN_STATES } from '../constants';
 import { normalizeString } from '../utils';
+import GeminiEventModal from './GeminiEventModal';
 
 // Helper component for selecting multiple entities
 const SearchableSelector = ({
@@ -89,6 +90,7 @@ const EventForm = ({
     businesses: Business[];
 }) => {
     const [event, setEvent] = useState(initialData || { name: '', date: '', city: '', state: '', venue: '', details: '', linkedArtistIds: [], linkedBusinessIds: [] });
+    const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
     
     const formFieldClass = "block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm shadow-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500";
     
@@ -105,59 +107,82 @@ const EventForm = ({
     const linkedArtistNames = (event.linkedArtistIds || []).map(id => artists.find(a => a.id === id)?.name).filter(Boolean).join(', ');
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome do Evento</label>
-                    <input name="name" value={event.name} onChange={handleChange} className={formFieldClass} required />
+        <>
+            <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome do Evento</label>
+                        <input name="name" value={event.name} onChange={handleChange} className={formFieldClass} required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data</label>
+                        <input name="date" type="date" value={event.date} onChange={handleChange} className={formFieldClass} required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Local (Venue)</label>
+                        <input name="venue" value={event.venue} onChange={handleChange} placeholder="Ex: Estádio Morumbi" className={formFieldClass} required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cidade</label>
+                        <input name="city" value={event.city} onChange={handleChange} className={formFieldClass} required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Estado</label>
+                        <select name="state" value={event.state} onChange={handleChange} className={formFieldClass} required>
+                            <option value="">Selecione...</option>
+                            {BRAZILIAN_STATES.map(s => <option key={s.uf} value={s.uf}>{s.name}</option>)}
+                        </select>
+                    </div>
+                    <div className="md:col-span-2">
+                        <div className="flex justify-between items-center mb-1">
+                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Detalhes Adicionais</label>
+                            <button 
+                                type="button"
+                                onClick={() => setIsGeminiModalOpen(true)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                            >
+                                <SparklesIcon className="w-3 h-3" />
+                                Gerar com IA
+                            </button>
+                        </div>
+                        <textarea name="details" value={event.details || ''} onChange={handleChange} rows={3} className={formFieldClass}></textarea>
+                    </div>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data</label>
-                    <input name="date" type="date" value={event.date} onChange={handleChange} className={formFieldClass} required />
+                <div className="space-y-4">
+                    <SearchableSelector
+                        label="Artistas Vinculados"
+                        items={artists}
+                        selectedIds={event.linkedArtistIds || []}
+                        onAdd={id => setEvent(p => ({...p, linkedArtistIds: [...(p.linkedArtistIds || []), id]}))}
+                        onRemove={id => setEvent(p => ({...p, linkedArtistIds: (p.linkedArtistIds || []).filter(artistId => artistId !== id)}))}
+                        placeholder="Buscar artista para adicionar..."
+                    />
+                    <SearchableSelector
+                        label="Empresários/Produtores Vinculados"
+                        items={businesses}
+                        selectedIds={event.linkedBusinessIds || []}
+                        onAdd={id => setEvent(p => ({...p, linkedBusinessIds: [...(p.linkedBusinessIds || []), id]}))}
+                        onRemove={id => setEvent(p => ({...p, linkedBusinessIds: (p.linkedBusinessIds || []).filter(businessId => businessId !== id)}))}
+                        placeholder="Buscar empresário para adicionar..."
+                    />
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Local (Venue)</label>
-                    <input name="venue" value={event.venue} onChange={handleChange} placeholder="Ex: Estádio Morumbi" className={formFieldClass} required />
+                <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800 mt-6">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300 dark:text-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 transition-colors">Cancelar</button>
+                    <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Salvar Evento</button>
                 </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cidade</label>
-                    <input name="city" value={event.city} onChange={handleChange} className={formFieldClass} required />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Estado</label>
-                    <select name="state" value={event.state} onChange={handleChange} className={formFieldClass} required>
-                        <option value="">Selecione...</option>
-                        {BRAZILIAN_STATES.map(s => <option key={s.uf} value={s.uf}>{s.name}</option>)}
-                    </select>
-                </div>
-                <div className="md:col-span-2">
-                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Detalhes Adicionais</label>
-                    <textarea name="details" value={event.details || ''} onChange={handleChange} rows={3} className={formFieldClass}></textarea>
-                </div>
-            </div>
-            <div className="space-y-4">
-                <SearchableSelector
-                    label="Artistas Vinculados"
-                    items={artists}
-                    selectedIds={event.linkedArtistIds || []}
-                    onAdd={id => setEvent(p => ({...p, linkedArtistIds: [...(p.linkedArtistIds || []), id]}))}
-                    onRemove={id => setEvent(p => ({...p, linkedArtistIds: (p.linkedArtistIds || []).filter(artistId => artistId !== id)}))}
-                    placeholder="Buscar artista para adicionar..."
-                />
-                 <SearchableSelector
-                    label="Empresários/Produtores Vinculados"
-                    items={businesses}
-                    selectedIds={event.linkedBusinessIds || []}
-                    onAdd={id => setEvent(p => ({...p, linkedBusinessIds: [...(p.linkedBusinessIds || []), id]}))}
-                    onRemove={id => setEvent(p => ({...p, linkedBusinessIds: (p.linkedBusinessIds || []).filter(businessId => businessId !== id)}))}
-                    placeholder="Buscar empresário para adicionar..."
-                />
-            </div>
-             <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800 mt-6">
-                <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300 dark:text-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 transition-colors">Cancelar</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">Salvar Evento</button>
-            </div>
-        </form>
+            </form>
+            <GeminiEventModal
+                isOpen={isGeminiModalOpen}
+                onClose={() => setIsGeminiModalOpen(false)}
+                onApply={(details) => setEvent(p => ({ ...p, details }))}
+                context={{
+                    eventName: event.name,
+                    artists: linkedArtistNames,
+                    venue: event.venue,
+                    date: event.date
+                }}
+            />
+        </>
     );
 };
 

@@ -1,14 +1,16 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { MusicalBlitz, Music, Artist, ActiveView } from '../types';
 import Modal from './Modal';
-import { PlusIcon, PencilIcon, TrashIcon, BoltIcon, CameraIcon, ArrowPathIcon } from './Icons';
+import { PlusIcon, PencilIcon, TrashIcon, BoltIcon, CameraIcon, ArrowPathIcon, SparklesIcon } from './Icons';
 import { normalizeString, capitalizeFirstLetter } from '../utils';
+import GeminiBlitzModal from './GeminiBlitzModal';
 
 type BlitzFormData = Omit<MusicalBlitz, 'id' | 'isArchived'>;
 
 const BlitzForm = ({ onSave, onClose, initialData, music, artists, editingBlitz }: { onSave: (data: BlitzFormData) => void; onClose: () => void; initialData?: BlitzFormData | null; music: Music[]; artists: Artist[]; editingBlitz: MusicalBlitz | null; }) => {
     const [blitz, setBlitz] = useState(initialData || { musicId: '', eventDate: '', notes: '' });
     const [weekendError, setWeekendError] = useState<{ show: boolean, day: string }>({ show: false, day: '' });
+    const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
     
     const formFieldClass = "block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm shadow-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500";
     
@@ -81,12 +83,37 @@ const BlitzForm = ({ onSave, onClose, initialData, music, artists, editingBlitz 
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data da Ação</label>
                     <input name="eventDate" type="date" value={blitz.eventDate} onChange={handleChange} className={formFieldClass} required />
                 </div>
-                <textarea name="notes" value={blitz.notes || ''} onChange={handleChange} placeholder="Observações (opcional)" rows={3} className={formFieldClass}></textarea>
+                <div>
+                    <div className="flex justify-between items-center mb-1">
+                        <label htmlFor="notes" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Observações (opcional)</label>
+                        <button 
+                            type="button"
+                            onClick={() => setIsGeminiModalOpen(true)}
+                            disabled={!blitz.musicId}
+                            className="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={!blitz.musicId ? "Selecione uma música primeiro" : "Gerar observações com IA"}
+                        >
+                            <SparklesIcon className="w-3 h-3" />
+                            Gerar com IA
+                        </button>
+                    </div>
+                    <textarea id="notes" name="notes" value={blitz.notes || ''} onChange={handleChange} placeholder="Observações..." rows={3} className={formFieldClass}></textarea>
+                </div>
                 <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200 dark:border-slate-800 mt-6">
                     <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 rounded-lg hover:bg-slate-300 dark:text-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500">Cancelar</button>
                     <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Salvar</button>
                 </div>
             </form>
+             <GeminiBlitzModal
+                isOpen={isGeminiModalOpen}
+                onClose={() => setIsGeminiModalOpen(false)}
+                onApply={(notes) => setBlitz(p => ({ ...p, notes }))}
+                context={{
+                    artistName: artistInfo?.name || '',
+                    songTitle: musicInfo?.title || '',
+                    eventDate: blitz.eventDate
+                }}
+            />
             <Modal isOpen={weekendError.show} onClose={handleCloseWeekendModal} title="Data Inválida" size="md">
                 <p>A data selecionada é um(a) <strong>{weekendError.day}</strong>.</p>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Não é permitido agendar lançamentos ou blitz aos sábados e domingos. Por favor, escolha um dia útil.</p>

@@ -1,13 +1,10 @@
-
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Artist, MusicGenre, Music, Business, ActiveView, MusicalBlitz } from '../types';
 import Modal from './Modal';
-import { PlusIcon, PencilIcon, TrashIcon, UserIcon, CloudArrowDownIcon, BriefcaseIcon, EyeIcon, EyeSlashIcon } from './Icons';
+import { PlusIcon, PencilIcon, TrashIcon, UserIcon, CloudArrowDownIcon, BriefcaseIcon, EyeIcon, EyeSlashIcon, SparklesIcon } from './Icons';
 import { MUSIC_GENRES } from '../constants';
 import { normalizeString, getReleaseStatus, getExpirationStatus } from '../utils';
+import GeminiArtistModal from './GeminiArtistModal';
 
 const isValidUrl = (urlString?: string): boolean => {
     if (!urlString || urlString.trim() === '') return true; // Optional field, so an empty string is valid.
@@ -44,6 +41,7 @@ const ArtistForm = ({
     const [editingSongId, setEditingSongId] = useState<string | null>(null);
     const [musicToDeleteIds, setMusicToDeleteIds] = useState<string[]>([]);
     const [weekendError, setWeekendError] = useState<{ show: boolean, day: string }>({ show: false, day: '' });
+    const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
 
     const formFieldClass = "block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm shadow-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500";
     
@@ -60,6 +58,20 @@ const ArtistForm = ({
     const handleCancelEdit = () => {
         setEditingSongId(null);
         setNewSongData({ title: '', composers: '', wavUrl: '', releaseDate: '' });
+    };
+
+    const addSongToList = (songData: { title: string; composers?: string; wavUrl?: string; releaseDate?: string; }) => {
+        const newSong: Music = {
+            id: `temp-${Date.now()}`,
+            artistId: initialData?.id || 'temp',
+            createdAt: new Date().toISOString(),
+            title: songData.title,
+            composers: songData.composers || '',
+            wavUrl: songData.wavUrl || '',
+            releaseDate: songData.releaseDate || '',
+            hideFromDashboard: false,
+        };
+        setArtistMusic(prev => [...prev, newSong]);
     };
 
     const handleAddOrUpdateSong = () => {
@@ -82,14 +94,7 @@ const ArtistForm = ({
         if (editingSongId) { // Update existing song
             setArtistMusic(prev => prev.map(s => s.id === editingSongId ? { ...s, ...newSongData } : s));
         } else { // Add new song
-            const newSong: Music = {
-                id: `temp-${Date.now()}`,
-                artistId: initialData?.id || 'temp',
-                createdAt: new Date().toISOString(),
-                ...newSongData,
-                hideFromDashboard: false,
-            };
-            setArtistMusic(prev => [...prev, newSong]);
+            addSongToList(newSongData);
         }
         handleCancelEdit();
     };
@@ -140,7 +145,18 @@ const ArtistForm = ({
                 <hr className="my-4 border-slate-200 dark:border-slate-800" />
                 
                 <div>
-                    <h3 className="text-lg font-medium mb-3 text-slate-900 dark:text-white">Músicas de Trabalho</h3>
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-white">Músicas de Trabalho</h3>
+                        <button
+                            type="button"
+                            onClick={() => setIsGeminiModalOpen(true)}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-100 rounded-full hover:bg-indigo-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        >
+                            <SparklesIcon className="w-4 h-4" />
+                            Gerar Ideias
+                        </button>
+                    </div>
+
                     {artistMusic.length > 0 && (
                         <ul className="space-y-2 mb-4 max-h-40 overflow-y-auto pr-2 border border-slate-200 dark:border-slate-800 rounded-lg p-2">
                             {artistMusic.map(song => (
@@ -205,6 +221,12 @@ const ArtistForm = ({
                     </button>
                 </div>
             </Modal>
+            <GeminiArtistModal
+                isOpen={isGeminiModalOpen}
+                onClose={() => setIsGeminiModalOpen(false)}
+                onAddSong={addSongToList}
+                context={{ artistName: artist.name, genre: artist.genre }}
+            />
         </>
     );
 };

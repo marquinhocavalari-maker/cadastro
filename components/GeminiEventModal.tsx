@@ -1,34 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-
 import Modal from './Modal';
 import { SparklesIcon, ArrowPathIcon } from './Icons';
 
-interface GeminiEmailModalProps {
+interface GeminiEventModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onApply: (subject: string, body: string) => void;
-    initialPromptData: {
-        artistName: string;
-        songTitle: string;
+    onApply: (details: string) => void;
+    context: {
+        eventName: string;
+        artists: string;
+        venue: string;
+        date: string;
     };
 }
 
-const GeminiEmailModal = ({ isOpen, onClose, onApply, initialPromptData }: GeminiEmailModalProps) => {
-    const [prompt, setPrompt] = useState('');
-    const [generated, setGenerated] = useState<{ subject: string; body: string } | null>(null);
+const GeminiEventModal = ({ isOpen, onClose, onApply, context }: GeminiEventModalProps) => {
+    const [prompt, setPrompt] = useState('Criar um texto para divulgação nas redes sociais e rádios.');
+    const [generated, setGenerated] = useState<{ details: string } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     
-    useEffect(() => {
-        if (isOpen) {
-            // Pre-fill prompt if context is available
-            if (initialPromptData.artistName && initialPromptData.songTitle) {
-                setPrompt(`Anunciar o lançamento do novo single "${initialPromptData.songTitle}" do artista ${initialPromptData.artistName} e pedir para adicioná-lo à programação.`);
-            }
-        }
-    }, [isOpen, initialPromptData]);
-
     const formFieldClass = "block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-sm shadow-sm placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500";
 
     const handleGenerate = async () => {
@@ -39,38 +31,38 @@ const GeminiEmailModal = ({ isOpen, onClose, onApply, initialPromptData }: Gemin
         try {
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
             
-            const fullPrompt = `
-                Sua tarefa é criar um e-mail de marketing para estações de rádio.
+            const eventDate = context.date ? new Date(context.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : 'data a ser confirmada';
 
-                **Contexto:**
-                - Artista: ${initialPromptData.artistName || 'Não especificado'}
-                - Música: ${initialPromptData.songTitle || 'Não especificada'}
+            const fullPrompt = `
+                Sua tarefa é criar um texto promocional para um evento.
+
+                **Contexto do Evento:**
+                - Nome do Evento: ${context.eventName || 'Não especificado'}
+                - Artistas: ${context.artists || 'Atrações a confirmar'}
+                - Local: ${context.venue || 'Local a ser confirmado'}
+                - Data: ${eventDate}
                 
-                **Objetivo do E-mail (definido pelo usuário):** 
+                **Objetivo do Texto (definido pelo usuário):** 
                 ${prompt}
 
-                Gere um assunto (subject) e corpo (body) para este e-mail. O corpo do e-mail deve ser bem estruturado, começando com uma saudação, apresentando a música e o artista, explicando o objetivo, fazendo uma chamada para ação clara (como "adicione à sua programação") e terminando com uma despedida profissional.
+                Gere uma descrição (details) para este evento. O texto deve ser empolgante, informativo e convidar o público a participar.
             `;
 
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
                 contents: fullPrompt,
                 config: {
-                    systemInstruction: `Você é um especialista em marketing para a indústria musical brasileira. Sua tarefa é criar textos de e-mail (assunto e corpo) para divulgar músicas e artistas para estações de rádio. O tom deve ser profissional, direto e convidativo. Retorne apenas um JSON válido.`,
+                    systemInstruction: `Você é um redator publicitário especializado em eventos musicais no Brasil. Crie textos vibrantes e persuasivos. Retorne apenas um JSON válido.`,
                     responseMimeType: 'application/json',
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
-                            subject: {
+                            details: {
                                 type: Type.STRING,
-                                description: 'O assunto do e-mail, conciso e chamativo.'
-                            },
-                            body: {
-                                type: Type.STRING,
-                                description: 'O corpo do e-mail, com uma saudação, apresentação da música/artista, um call-to-action (ex: pedir para incluir na programação) e uma despedida cordial.'
+                                description: 'O texto promocional para o evento, contendo as informações principais de forma atrativa.'
                             },
                         },
-                        required: ['subject', 'body'],
+                        required: ['details'],
                     }
                 }
             });
@@ -88,14 +80,12 @@ const GeminiEmailModal = ({ isOpen, onClose, onApply, initialPromptData }: Gemin
     
     const handleApply = () => {
         if (generated) {
-            onApply(generated.subject, generated.body);
+            onApply(generated.details);
             handleClose();
         }
     };
 
     const handleClose = () => {
-        // Reset state on close
-        setPrompt('');
         setGenerated(null);
         setError('');
         setIsLoading(false);
@@ -103,22 +93,19 @@ const GeminiEmailModal = ({ isOpen, onClose, onApply, initialPromptData }: Gemin
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} title="Gerar E-mail com IA" size="2xl">
+        <Modal isOpen={isOpen} onClose={handleClose} title="Gerar Descrição de Evento com IA" size="2xl">
             <div className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                        Descreva ou ajuste o objetivo do e-mail
+                        Qual o tom ou objetivo da descrição?
                     </label>
                     <textarea
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Ex: Anunciar o lançamento do novo single e pedir para adicioná-lo à programação."
+                        placeholder="Ex: Um texto curto para post de Instagram."
                         className={formFieldClass}
                         rows={3}
                     />
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Informações da música selecionada ({initialPromptData.artistName || 'Nenhum'} - {initialPromptData.songTitle || 'Nenhuma'}) serão enviadas como contexto para a IA.
-                    </p>
                 </div>
 
                 <button
@@ -127,7 +114,7 @@ const GeminiEmailModal = ({ isOpen, onClose, onApply, initialPromptData }: Gemin
                     className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-600"
                 >
                     {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin"/> : <SparklesIcon className="w-5 h-5"/>}
-                    {isLoading ? 'Gerando...' : 'Gerar Texto'}
+                    {isLoading ? 'Gerando...' : 'Gerar Descrição'}
                 </button>
 
                 {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -136,18 +123,9 @@ const GeminiEmailModal = ({ isOpen, onClose, onApply, initialPromptData }: Gemin
                     <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
                         <h3 className="text-md font-semibold text-slate-800 dark:text-slate-200">Resultado Gerado:</h3>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Assunto</label>
-                            <input
-                                value={generated.subject}
-                                onChange={(e) => setGenerated(g => g ? { ...g, subject: e.target.value } : null)}
-                                className={formFieldClass}
-                            />
-                        </div>
-                        <div>
-                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Corpo do E-mail</label>
                              <textarea
-                                value={generated.body}
-                                onChange={(e) => setGenerated(g => g ? { ...g, body: e.target.value } : null)}
+                                value={generated.details}
+                                onChange={(e) => setGenerated(g => g ? { ...g, details: e.target.value } : null)}
                                 className={formFieldClass}
                                 rows={8}
                             />
@@ -161,11 +139,11 @@ const GeminiEmailModal = ({ isOpen, onClose, onApply, initialPromptData }: Gemin
                     Cancelar
                 </button>
                 <button type="button" onClick={handleApply} disabled={!generated} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:bg-slate-400 dark:disabled:bg-slate-600">
-                    Aplicar Texto
+                    Aplicar
                 </button>
             </div>
         </Modal>
     );
 };
 
-export default GeminiEmailModal;
+export default GeminiEventModal;
