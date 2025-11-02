@@ -1,0 +1,14 @@
+{
+  "name": "controle-plus",
+  "description": "Um dashboard moderno para gerenciar contatos e campanhas.",
+  "private": true,
+  "version": "1.2.5",
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0"
+  }
+}
